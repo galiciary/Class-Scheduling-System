@@ -25,10 +25,10 @@ export function useCourses(): UseCoursesResult {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    let canceled = false;
 
     const timer = setTimeout(() => {
-      if (cancelled) return;
+      if (canceled) return;
       try {
         const data = mockCourseData as CourseData;
         setCourses(data.courses);
@@ -40,7 +40,7 @@ export function useCourses(): UseCoursesResult {
     }, 300);
 
     return () => {
-      cancelled = true;
+      canceled = true;
       clearTimeout(timer);
     };
   }, []);

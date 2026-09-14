@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { CourseList } from "@/components/course/CourseList";
 import { SearchBar } from "@/components/filters/SearchBar";
+import { ScheduleView } from "@/components/schedule/ScheduleView";
 import { useCourses } from "@/hooks/useCourses";
 import { useSchedule } from "@/hooks/useSchedule";
 import { filterCourses } from "@/lib/filterCourses";
@@ -12,18 +13,18 @@ export default function HomePage() {
   const { selectedSections, totalUnits, clearSchedule } = useSchedule();
   const [query, setQuery] = useState("");
 
-  // Only re-filters when the catalog or the query changes — not when a section
-  // is added or removed, which re-renders this page but leaves the list identical.
+  // Only re-filters when the catalog or the query changes — not when a section is
+  // added or removed, which re-renders this page but leaves the course list identical.
   const filteredCourses = useMemo(() => filterCourses(courses, query), [courses, query]);
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+    <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
           Class Scheduler
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Browse courses, pick your sections, and build a schedule for the term.
+          Browse courses, choose your sections, and build your dream schedule.
         </p>
       </header>
 
@@ -45,18 +46,29 @@ export default function HomePage() {
         ) : null}
       </section>
 
-      <section className="mt-6">
-        <h2 className="sr-only">Available courses</h2>
-        <SearchBar value={query} onChange={setQuery} resultCount={filteredCourses.length} />
-        <div className="mt-4">
-          <CourseList
-            courses={filteredCourses}
-            isLoading={isLoading}
-            error={error}
-            hasQuery={query.trim().length > 0}
-          />
-        </div>
-      </section>
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:items-start">
+        <section>
+          <h2 className="mb-3 text-sm font-semibold tracking-wide text-slate-500 uppercase">
+            Courses
+          </h2>
+          <SearchBar value={query} onChange={setQuery} resultCount={filteredCourses.length} />
+          <div className="mt-4">
+            <CourseList
+              courses={filteredCourses}
+              isLoading={isLoading}
+              error={error}
+              hasQuery={query.trim().length > 0}
+            />
+          </div>
+        </section>
+
+        <section className="lg:sticky lg:top-8">
+          <h2 className="mb-3 text-sm font-semibold tracking-wide text-slate-500 uppercase">
+            Your schedule
+          </h2>
+          <ScheduleView />
+        </section>
+      </div>
     </main>
   );
 }
