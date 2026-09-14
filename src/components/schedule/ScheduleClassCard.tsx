@@ -20,6 +20,11 @@ interface ScheduleClassCardProps {
  * A single class block. Shared by both the desktop grid and the mobile day list so
  * the two layouts can never drift apart visually or in what they show.
  *
+ * Deliberately shows only what the grid is for — which course, and where. The
+ * instructor is omitted because the column is too narrow to hold a full name without
+ * truncating it mid-word, and the course list already carries that detail where
+ * there's room for it.
+ *
  * The saturated left bar carries the category, not the pale fill: most of a student's
  * schedule is major courses, so a grid of near-identical washed-out cards makes the
  * color coding useless. The bar stays the category color even when the card is
@@ -36,22 +41,28 @@ export function ScheduleClassCard({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-lg border py-2 pr-2 pl-3 ${color.bg} ${
+      className={`relative overflow-hidden rounded-lg border py-1.5 pr-1.5 pl-2.5 ${color.bg} ${
         isConflicting ? "border-rose-400 ring-1 ring-rose-300" : color.border
       }`}
     >
       <span className={`absolute inset-y-0 left-0 w-1 ${color.accent}`} aria-hidden="true" />
 
+      {/*
+        Sized to a 24px target and given enough contrast to read as a control — it's
+        the only way to remove a class from the grid, so it can't be a faint hairline.
+      */}
       <button
         type="button"
         onClick={() => onRemove(entry.sectionId)}
         aria-label={`Remove ${entry.courseCode} section ${entry.sectionCode} from schedule`}
-        className="absolute top-1 right-1 rounded px-1 text-sm leading-none text-slate-400 transition-colors hover:bg-white hover:text-slate-700"
+        className="absolute top-0 right-0 flex size-6 items-center justify-center rounded text-slate-500 transition-colors hover:bg-white hover:text-slate-900"
       >
-        <span aria-hidden="true">×</span>
+        <span aria-hidden="true" className="text-sm leading-none">
+          ×
+        </span>
       </button>
 
-      <p className={`pr-4 text-xs font-semibold ${color.text}`}>{entry.courseCode}</p>
+      <p className={`pr-5 text-xs font-semibold ${color.text}`}>{entry.courseCode}</p>
       <p className="mt-0.5 text-[11px] text-slate-600">
         {entry.sectionCode} · {entry.room}
       </p>
@@ -60,11 +71,10 @@ export function ScheduleClassCard({
           {formatTime(entry.startTime)} – {formatTime(entry.endTime)}
         </p>
       ) : null}
-      <p className="mt-0.5 truncate text-[11px] text-slate-500">{entry.instructor}</p>
 
-      {/* Spelled out in text, not just a red border; color alone shouldn't carry meaning. */}
+      {/* Spelled out in text, not just a red border — color alone shouldn't carry meaning. */}
       {isConflicting ? (
-        <p className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-rose-700">
+        <p className="mt-0.5 flex items-center gap-1 text-[11px] font-semibold text-rose-700">
           <span aria-hidden="true">⚠</span>
           Conflict
         </p>

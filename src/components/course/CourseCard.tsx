@@ -20,6 +20,13 @@ interface CourseCardProps {
   onRemoveSection: (sectionId: string) => void;
 }
 
+/**
+ * One course in the catalog, expanding to reveal its sections.
+ *
+ * Kept deliberately compact: browsing is this column's whole job, and the catalog is
+ * long enough that generous padding would mean scrolling past a handful of courses at
+ * a time to find anything.
+ */
 function CourseCardComponent({
   course,
   selectedSectionId,
@@ -47,20 +54,20 @@ function CourseCardComponent({
         onClick={() => setIsExpanded((expanded) => !expanded)}
         aria-expanded={isExpanded}
         aria-controls={sectionsPanelId}
-        className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-slate-50"
+        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-slate-50"
       >
         <span className={`size-2.5 shrink-0 rounded-full ${color.accent}`} aria-hidden="true" />
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2">
-            <span className="font-semibold text-slate-900">{course.code}</span>
+            <span className="text-sm font-semibold text-slate-900">{course.code}</span>
             <span className="text-xs text-slate-500">
               {course.units} {course.units === 1 ? "unit" : "units"}
             </span>
           </div>
-          <p className="truncate text-sm text-slate-600">{course.title}</p>
+          <p className="truncate text-xs text-slate-600">{course.title}</p>
           {selectedSection ? (
-            <p className={`mt-1 text-xs font-medium ${color.text}`}>
+            <p className={`text-xs font-medium ${color.text}`}>
               Section {selectedSection.section} selected
             </p>
           ) : null}

@@ -19,9 +19,10 @@ interface ScheduleGridProps {
  * `table-fixed` is load-bearing, not cosmetic. With automatic layout the browser
  * sizes each column to its contents, so adding a class would re-measure that column
  * and shift every day heading sideways. Fixed layout pins the columns to equal
- * widths, and the minimum cell height keeps rows from jumping vertically for the
- * same reason. The minimum table width lets the container scroll on a narrow
- * viewport instead of crushing six days into unreadable slivers.
+ * widths. The cell minimum height is set just under a populated card's height, so
+ * rows barely move when a class lands in one while empty periods stay compact
+ * instead of padding the grid out with whitespace. The minimum table width lets the
+ * container scroll on a narrow viewport instead of crushing six days into slivers.
  */
 export function ScheduleGrid({ timetable, onRemove, conflictingEntryIds }: ScheduleGridProps) {
   const { days, rows } = timetable;
@@ -57,7 +58,7 @@ export function ScheduleGrid({ timetable, onRemove, conflictingEntryIds }: Sched
               {days.map((day) => {
                 const entries = row.entriesByDay.get(day) ?? [];
                 return (
-                  <td key={day} className="h-20 px-1.5 py-1.5 align-top">
+                <td key={day} className="h-14 px-1.5 py-1.5 align-top">
                     {entries.length > 0 ? (
                       <div className="space-y-1.5">
                         {entries.map((entry) => (
