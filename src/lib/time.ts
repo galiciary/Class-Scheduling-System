@@ -55,7 +55,7 @@ export function formatScheduleSlot(slot: ScheduleSlot): string {
 
 /**
  * Formats a section's full schedule (which may span multiple days) into a
- * single comma-separated line, for compact display in course/section lists.
+ * single comma-separated line.
  *
  * @example formatSchedule([
  *   { day: "Monday", startTime: "10:00", endTime: "11:30" },
@@ -65,4 +65,30 @@ export function formatScheduleSlot(slot: ScheduleSlot): string {
  */
 export function formatSchedule(schedule: ScheduleSlot[]): string {
   return schedule.map(formatScheduleSlot).join(", ");
+}
+
+/**
+ * Compact variant for dense UI: when every meeting shares the same time (the
+ * normal case — a section meets at the same hour on each of its days), the days
+ * are grouped and the time is stated once. Falls back to the verbose form when
+ * the times actually differ per day.
+ *
+ * @example formatScheduleCompact([
+ *   { day: "Monday", startTime: "10:00", endTime: "11:30" },
+ *   { day: "Thursday", startTime: "10:00", endTime: "11:30" },
+ * ])
+ * // "Mon/Thu 10:00 AM – 11:30 AM"
+ */
+export function formatScheduleCompact(schedule: ScheduleSlot[]): string {
+  if (schedule.length === 0) return "Schedule TBA";
+
+  const [first] = schedule;
+  const allShareOneTime = schedule.every(
+    (slot) => slot.startTime === first.startTime && slot.endTime === first.endTime,
+  );
+
+  if (!allShareOneTime) return formatSchedule(schedule);
+
+  const days = schedule.map((slot) => slot.day.slice(0, 3)).join("/");
+  return `${days} ${formatTime(first.startTime)} – ${formatTime(first.endTime)}`;
 }
