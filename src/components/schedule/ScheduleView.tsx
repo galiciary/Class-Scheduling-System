@@ -6,38 +6,30 @@ import { ScheduleGrid } from "@/components/schedule/ScheduleGrid";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useSchedule } from "@/hooks/useSchedule";
 import { buildTimetable, groupTimetableByDay } from "@/lib/buildTimetable";
-import { COURSE_CATEGORIES, getCourseCategory, type CourseCategory } from "@/lib/colors";
+import { COURSE_CATEGORIES } from "@/lib/colors";
 import { describeConflict, detectConflicts, type ScheduleConflict } from "@/lib/conflicts";
 import type { SelectedSection } from "@/types/course";
 
 /**
  * Color key for the grid. Lists categories rather than individual courses, because
  * colors are assigned per category — a per-course legend would repeat the same
- * swatch for every Computer Science course and imply a distinction that isn't there.
+ * swatch for every major course and imply a distinction that isn't there.
+ *
+ * Filtering the canonical list (rather than collecting categories as courses are
+ * added) keeps the legend in a fixed order, so it doesn't reshuffle itself while
+ * the student builds a schedule.
  */
 function ScheduleLegend({ selectedSections }: { selectedSections: SelectedSection[] }) {
   const categories = useMemo(() => {
-    const present = new Map<string, CourseCategory>();
-    for (const selected of selectedSections) {
-      const category = getCourseCategory(selected.courseCode);
-      present.set(category.id, category);
-    }
-
-    // Keep the canonical category order rather than the order courses were added,
-    // so the legend doesn't reshuffle itself as the student builds a schedule.
-    const orderOf = (category: CourseCategory) => {
-      const index = COURSE_CATEGORIES.findIndex((known) => known.id === category.id);
-      return index === -1 ? COURSE_CATEGORIES.length : index;
-    };
-
-    return [...present.values()].sort((a, b) => orderOf(a) - orderOf(b));
+    const present = new Set(selectedSections.map((selected) => selected.category));
+    return COURSE_CATEGORIES.filter((category) => present.has(category.id));
   }, [selectedSections]);
 
   return (
     <ul className="mb-3 flex flex-wrap gap-x-4 gap-y-1.5">
       {categories.map((category) => (
         <li key={category.id} className="flex items-center gap-1.5 text-xs text-slate-600">
-            <span className={`size-2 rounded-full ${category.color.accent}`} aria-hidden="true" />
+          <span className={`size-2 rounded-full ${category.color.accent}`} aria-hidden="true" />
           {category.label}
         </li>
       ))}

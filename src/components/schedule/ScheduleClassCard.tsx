@@ -32,7 +32,7 @@ export function ScheduleClassCard({
   showTime = false,
   isConflicting = false,
 }: ScheduleClassCardProps) {
-  const color = getCourseColor(entry.courseCode);
+  const color = getCourseColor(entry.category);
 
   return (
     <div

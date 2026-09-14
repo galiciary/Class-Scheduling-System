@@ -1,14 +1,17 @@
+import type { CourseCategoryId } from "@/types/course";
+
 /**
- * Course colors, assigned by course category rather than per individual course.
+ * Maps a course category to the colors used to render it.
  *
- * Categorizing means every major course reads as one color, every GE as another, and
- * so on — you can tell what kind of course a block is at a glance. The cost is that two
- * courses in the same category look alike on the grid, so each block relies on its
- * printed course code to identify it.
+ * This module is purely presentational: it takes the category the data already
+ * declares and decides what it looks like. It deliberately does not decide *what*
+ * category a course is — that's domain data, and it lives on the course itself (see
+ * `CourseCategoryId` in `src/types/course.ts`). An earlier version inferred category
+ * from the course code prefix, which broke as soon as it met courses whose prefix
+ * says nothing about their curriculum role.
  *
- * Colors are computed here rather than stored on the course data because color is a
- * presentation concern: a real backend course catalog wouldn't return a color field,
- * so keeping it out of mockCourses.json keeps that data honest to what an API would send.
+ * Color stays out of the data for the mirror-image reason: a real registrar API would
+ * return a course classification, but it would never return a hex value or a CSS class.
  *
  * Note: red/rose is deliberately absent — it's reserved for conflict highlighting, so a
  * course must never be able to look like a warning.
@@ -30,53 +33,27 @@ export interface CourseColor {
 }
 
 export interface CourseCategory {
-  id: string;
+  id: CourseCategoryId;
   /** Human-readable name, used in the schedule legend. */
   label: string;
-  /** Course code prefixes belonging to this category. */
-  prefixes: string[];
   color: CourseColor;
 }
 
-/**
- * The default category, covering degree courses that aren't one of the explicit
- * categories below — core (CC), computer science (CS), and subject codes that follow
- * no departmental prefix at all (CREATIVE, PSYFILI, and so on).
- *
- * Making it the fallback rather than an exhaustive prefix list means a new subject code
- * picks up a sensible color without this table needing an entry for every course the
- * university offers — only the exceptions have to be declared.
- */
-const MAJOR_CATEGORY: CourseCategory = {
-  id: "major",
-  label: "Major Courses",
-  prefixes: ["CC", "CS"],
-  color: {
-    bg: "bg-purple-50",
-    border: "border-purple-300",
-    text: "text-purple-700",
-    accent: "bg-purple-500",
-  },
-};
-
-/** Categories in legend order. Prefixes don't overlap, so match order doesn't matter here. */
+/** Categories in legend order. */
 export const COURSE_CATEGORIES: CourseCategory[] = [
-  MAJOR_CATEGORY,
   {
-    id: "network-security",
-    label: "NIS Specialization",
-    prefixes: ["NS"],
+    id: "major",
+    label: "Major Courses",
     color: {
-      bg: "bg-blue-50",
-      border: "border-blue-300",
-      text: "text-blue-700",
-      accent: "bg-blue-500",
+      bg: "bg-purple-50",
+      border: "border-purple-300",
+      text: "text-purple-700",
+      accent: "bg-purple-500",
     },
   },
   {
-    id: "general-education",
+    id: "general_education",
     label: "General Education",
-    prefixes: ["GE", "LCC"],
     color: {
       bg: "bg-emerald-50",
       border: "border-emerald-300",
@@ -85,9 +62,8 @@ export const COURSE_CATEGORIES: CourseCategory[] = [
     },
   },
   {
-    id: "physical-education",
+    id: "physical_education",
     label: "Physical Education",
-    prefixes: ["PE"],
     color: {
       bg: "bg-orange-50",
       border: "border-orange-300",
@@ -97,17 +73,18 @@ export const COURSE_CATEGORIES: CourseCategory[] = [
   },
 ];
 
-export function getCourseCategory(courseCode: string): CourseCategory {
-  const code = courseCode.toUpperCase();
+const CATEGORY_BY_ID = new Map(COURSE_CATEGORIES.map((category) => [category.id, category]));
 
-  return (
-    COURSE_CATEGORIES.find((category) =>
-      category.prefixes.some((prefix) => code.startsWith(prefix)),
-    ) ?? MAJOR_CATEGORY
-  );
+/**
+ * TypeScript can't check JSON at runtime, so a category value from a future data
+ * source that isn't one we know about falls back to the first category rather than
+ * rendering an unstyled card.
+ */
+export function getCourseCategory(category: CourseCategoryId): CourseCategory {
+  return CATEGORY_BY_ID.get(category) ?? COURSE_CATEGORIES[0];
 }
 
 /** Convenience for components that only need the color, not the category label. */
-export function getCourseColor(courseCode: string): CourseColor {
-  return getCourseCategory(courseCode).color;
+export function getCourseColor(category: CourseCategoryId): CourseColor {
+  return getCourseCategory(category).color;
 }

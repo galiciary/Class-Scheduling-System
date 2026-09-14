@@ -1,5 +1,5 @@
 import { CLASS_DAYS, CLASS_PERIODS, DAYS_OF_WEEK, formatTime, timeToMinutes } from "@/lib/time";
-import type { DayOfWeek, SelectedSection } from "@/types/course";
+import type { CourseCategoryId, DayOfWeek, SelectedSection } from "@/types/course";
 
 /**
  * Transforms the student's selected sections into a renderable timetable.
@@ -22,6 +22,7 @@ export interface TimetableEntry {
   courseCode: string;
   courseTitle: string;
   sectionCode: string;
+  category: CourseCategoryId;
   instructor: string;
   room: string;
   day: DayOfWeek;
@@ -70,6 +71,7 @@ export function buildTimetable(selectedSections: SelectedSection[]): Timetable {
         courseCode: selected.courseCode,
         courseTitle: selected.courseTitle,
         sectionCode: selected.section.section,
+        category: selected.category,
         instructor: selected.section.instructor,
         room: selected.section.room,
         day: slot.day,
@@ -121,7 +123,7 @@ export function buildTimetable(selectedSections: SelectedSection[]): Timetable {
       timeToMinutes(a.endTime) - timeToMinutes(b.endTime),
   );
 
-    return { days, rows, entries };
+  return { days, rows, entries };
 }
 
 export interface TimetableDayGroup {

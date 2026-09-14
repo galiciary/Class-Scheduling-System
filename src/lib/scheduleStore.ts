@@ -1,4 +1,6 @@
+import { parseStoredSchedule } from "@/lib/parseStoredSchedule";
 import type { Course, Section, SelectedSection } from "@/types/course";
+
 
 const STORAGE_KEY = "class-scheduling-system:selected-sections";
 
@@ -34,11 +36,13 @@ function readFromStorage(): SelectedSection[] {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return EMPTY;
-    const parsed = JSON.parse(raw) as SelectedSection[];
-    return Array.isArray(parsed) ? parsed : EMPTY;
+
+    // Validated rather than cast: see parseStoredSchedule for why stored JSON can't
+    // be trusted to still match the current shape.
+    const stored = parseStoredSchedule(raw);
+    return stored.length > 0 ? stored : EMPTY;
   } catch {
-    // Corrupted or inaccessible storage — fall back to an empty schedule
-    // rather than crashing the app.
+    // localStorage itself was unreachable (private browsing, blocked storage).
     return EMPTY;
   }
 }
@@ -102,13 +106,14 @@ export function addSection(course: Course, section: Section): void {
     (selected) => selected.courseId !== course.id,
   );
 
-  setSections([
+    setSections([
     ...withoutThisCourse,
     {
       courseId: course.id,
       courseCode: course.code,
       courseTitle: course.title,
       units: course.units,
+      category: course.category,
       section,
     },
   ]);

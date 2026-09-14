@@ -20,11 +20,11 @@ Matches `CourseData` in `src/types/course.ts`: `Course -> Section[] -> ScheduleS
   timetable renders.
 - **Day pairing**: twice-a-week sections follow DLSU's standard pairings —
   Monday/Thursday, Tuesday/Friday, or Wednesday/Saturday. No Sunday classes.
-- **Section codes**: `S`-prefixed (e.g. `S15`) for major courses, `Z`-prefixed for
-  GE courses, and `Y`-prefixed for PE, matching DLSU's usual convention.
-- **Rooms**: ordinary classroom codes (e.g. `G301`, `A1901`) for lecture courses;
-  PE sections use Razon Sports Center codes (`ER801`, `ER802`) instead, since PE
-  isn't held in a classroom.
+- **Category**: each course declares a `category` (`major`, `general_education`, or
+  `physical_education`) rather than having it inferred from the course code. A code
+  prefix identifies the offering department, not the course's curriculum role — CC, CS,
+  and NS are all degree requirements — and a course like `PSYFILI` is a major for a
+  psychology student and a GE for this one. Only the data can express that.
 
 ## Assumptions carried over from the assessment brief
 
@@ -32,6 +32,6 @@ Matches `CourseData` in `src/types/course.ts`: `Course -> Section[] -> ScheduleS
   Selecting sections that clash is still possible, so the app detects and reports
   overlaps anyway (`src/lib/conflicts.ts`) — the evaluation criteria list conflict
   detection under Functionality.
-- Colors are intentionally **not** stored per course. They're derived from the
-  course code's category prefix (CC/CS, NS, GE/LCC, PE) at render time; see
-  `src/lib/colors.ts` for the reasoning.
+- Colors are intentionally **not** stored per course. `src/lib/colors.ts` maps the
+  declared `category` to a color at render time — a real API would return a course
+  classification, but never a CSS class.

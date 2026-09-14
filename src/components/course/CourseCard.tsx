@@ -29,7 +29,7 @@ function CourseCardComponent({
   const [isExpanded, setIsExpanded] = useState(false);
   const sectionsPanelId = useId();
 
-  const color = getCourseColor(course.code);
+  const color = getCourseColor(course.category);
   const selectedSection = course.sections.find((section) => section.id === selectedSectionId);
 
   const handleToggle = (section: Section) => {

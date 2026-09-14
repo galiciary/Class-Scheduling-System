@@ -1,11 +1,19 @@
 /**
- * Domain types for the class scheduling app.
+ * Where a course sits in the student's curriculum.
  *
- * This mirrors how a real course-catalog API would likely structure data
- * (a course has multiple offered sections, each section meets on one or
- * more days/times), so the mock data in `src/data/mockCourses.json` can be
- * swapped for a live API response later without changing these types.
+ * Declared per course rather than inferred from the course code, because a code
+ * prefix identifies the department offering the course, not the course's role in a
+ * program. CC, CS, and NS courses are all degree requirements despite the different
+ * prefixes, and the same course can play different roles in different programs —
+ * Sikolohiyang Filipino is a major for a psychology student and a GE for this one.
+ * No amount of prefix parsing can represent that; declaring it can.
+ *
+ * Declared as a const array with the type derived from it, rather than the reverse,
+ * so runtime validation has a list to check against and the two can never disagree.
  */
+export const COURSE_CATEGORY_IDS = ["major", "general_education", "physical_education"] as const;
+
+export type CourseCategoryId = (typeof COURSE_CATEGORY_IDS)[number];
 
 /** Day a section meets on. Includes the full week (not just weekdays) since some sections meet on Saturday. */
 export type DayOfWeek =
@@ -32,7 +40,7 @@ export interface ScheduleSlot {
  */
 export interface Section {
   id: string;
-  /** Section code as used by the registrar, e.g. "S15" for majors/GE, "Y11" for PE. */
+  /** Section code as used by the registrar, e.g. "S15" for majors, "Z11" for GE, "Y11" for PE. */
   section: string;
   instructor: string;
   room: string;
@@ -40,12 +48,13 @@ export interface Section {
   schedule: ScheduleSlot[];
 }
 
-/** A course as it would appear in a catalog: a code/title/units, with one or more sections a student can pick from. */
+/** A course as it would appear in a catalog — a code/title/units/category, with one or more sections a student can pick from. */
 export interface Course {
   id: string;
   code: string;
   title: string;
   units: number;
+  category: CourseCategoryId;
   sections: Section[];
 }
 
@@ -56,7 +65,7 @@ export interface CourseData {
 
 /**
  * A section the student has added to their personal schedule.
- * Flattens the parent course's code/title/units alongside the chosen section so
+ * Flattens the parent course's identifying fields alongside the chosen section so
  * schedule-rendering components don't need to look the course back up by id.
  */
 export interface SelectedSection {
@@ -64,5 +73,6 @@ export interface SelectedSection {
   courseCode: string;
   courseTitle: string;
   units: number;
+  category: CourseCategoryId;
   section: Section;
 }
