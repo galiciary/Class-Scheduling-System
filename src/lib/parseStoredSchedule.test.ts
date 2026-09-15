@@ -12,8 +12,7 @@ const valid: SelectedSection = {
     id: "CCPROG3-S15",
     section: "S15",
     instructor: "Soren Uy",
-    room: "A1901",
-    schedule: [{ day: "Wednesday", startTime: "07:30", endTime: "09:00" }],
+    schedule: [{ day: "Wednesday", startTime: "07:30", endTime: "09:00", room: "A1901" }],
   },
 };
 
@@ -39,10 +38,25 @@ describe("parseStoredSchedule", () => {
     expect(store([stale])).toEqual([]);
   });
 
+  it("drops an entry saved before rooms moved onto each meeting", () => {
+    const stale = {
+      ...valid,
+      section: {
+        ...valid.section,
+        schedule: [{ day: "Wednesday", startTime: "07:30", endTime: "09:00" }],
+      },
+    };
+
+    expect(store([stale])).toEqual([]);
+  });
+
   it("drops an entry whose meeting falls on an unrecognized day", () => {
     const badDay = {
       ...valid,
-      section: { ...valid.section, schedule: [{ day: "Funday", startTime: "07:30", endTime: "09:00" }] },
+      section: {
+        ...valid.section,
+        schedule: [{ day: "Funday", startTime: "07:30", endTime: "09:00", room: "A1901" }],
+      },
     };
 
     expect(store([badDay])).toEqual([]);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatScheduleCompact, formatTime, timeToMinutes } from "@/lib/time";
+import { formatSlot, formatTime, timeToMinutes } from "@/lib/time";
 
 describe("timeToMinutes", () => {
   it("converts a 24-hour time to minutes since midnight", () => {
@@ -25,26 +25,16 @@ describe("formatTime", () => {
   });
 });
 
-describe("formatScheduleCompact", () => {
-  it("groups days that share a single time", () => {
+describe("formatSlot", () => {
+  it("renders the day, time range, and room on one line", () => {
     expect(
-      formatScheduleCompact([
-        { day: "Monday", startTime: "10:00", endTime: "11:30" },
-        { day: "Thursday", startTime: "10:00", endTime: "11:30" },
-      ]),
-    ).toBe("Mon/Thu 10:00 AM – 11:30 AM");
+      formatSlot({ day: "Monday", startTime: "09:15", endTime: "10:45", room: "G208" }),
+    ).toBe("Mon 9:15 AM – 10:45 AM · G208");
   });
 
-  it("lists each meeting separately when the times differ by day", () => {
+  it("shows the online room the same way any other room is shown", () => {
     expect(
-      formatScheduleCompact([
-        { day: "Monday", startTime: "10:00", endTime: "11:30" },
-        { day: "Thursday", startTime: "13:00", endTime: "14:30" },
-      ]),
-    ).toBe("Mon 10:00 AM - 11:30 AM, Thu 1:00 PM - 2:30 PM");
-  });
-
-  it("handles a section with no meetings", () => {
-    expect(formatScheduleCompact([])).toBe("Schedule TBA");
+      formatSlot({ day: "Thursday", startTime: "09:15", endTime: "10:45", room: "Online" }),
+    ).toBe("Thu 9:15 AM – 10:45 AM · Online");
   });
 });

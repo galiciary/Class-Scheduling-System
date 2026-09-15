@@ -42,19 +42,20 @@ function isCourseCategoryId(value: unknown): value is CourseCategoryId {
 function parseScheduleSlot(value: unknown): ScheduleSlot | null {
   if (!isRecord(value)) return null;
 
-  const { day, startTime, endTime } = value;
+  const { day, startTime, endTime, room } = value;
   if (!isDayOfWeek(day)) return null;
   if (!isNonEmptyString(startTime) || !isNonEmptyString(endTime)) return null;
+  if (!isNonEmptyString(room)) return null;
 
-  return { day, startTime, endTime };
+  return { day, startTime, endTime, room };
 }
 
 function parseSection(value: unknown): Section | null {
   if (!isRecord(value)) return null;
 
-  const { id, section, instructor, room, schedule } = value;
+  const { id, section, instructor, schedule } = value;
   if (!isNonEmptyString(id) || !isNonEmptyString(section)) return null;
-  if (!isNonEmptyString(instructor) || !isNonEmptyString(room)) return null;
+  if (!isNonEmptyString(instructor)) return null;
   if (!Array.isArray(schedule)) return null;
 
   const slots: ScheduleSlot[] = [];
@@ -66,7 +67,7 @@ function parseSection(value: unknown): Section | null {
     slots.push(slot);
   }
 
-  return { id, section, instructor, room, schedule: slots };
+  return { id, section, instructor, schedule: slots };
 }
 
 function parseSelectedSection(value: unknown): SelectedSection | null {

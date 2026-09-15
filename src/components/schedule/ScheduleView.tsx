@@ -5,7 +5,7 @@ import { ScheduleDayList } from "@/components/schedule/ScheduleDayList";
 import { ScheduleGrid } from "@/components/schedule/ScheduleGrid";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useSchedule } from "@/hooks/useSchedule";
-import { buildTimetable, groupTimetableByDay } from "@/lib/buildTimetable";
+import { buildTimetable } from "@/lib/buildTimetable";
 import { COURSE_CATEGORIES } from "@/lib/colors";
 import { describeConflict, detectConflicts, type ScheduleConflict } from "@/lib/conflicts";
 import type { SelectedSection } from "@/types/course";
@@ -74,7 +74,6 @@ export function ScheduleView() {
   const { selectedSections, removeSection } = useSchedule();
 
   const timetable = useMemo(() => buildTimetable(selectedSections), [selectedSections]);
-  const dayGroups = useMemo(() => groupTimetableByDay(timetable), [timetable]);
   const { conflicts, conflictingEntryIds } = useMemo(
     () => detectConflicts(timetable.entries),
     [timetable],
@@ -115,7 +114,7 @@ export function ScheduleView() {
           />
         ) : (
           <ScheduleDayList
-            groups={dayGroups}
+            days={timetable.days}
             onRemove={removeSection}
             conflictingEntryIds={conflictingEntryIds}
           />

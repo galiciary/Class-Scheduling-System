@@ -25,13 +25,29 @@ export type DayOfWeek =
   | "Friday"
   | "Saturday";
 
-/** One meeting block for a section, e.g. "this section meets Monday 10:00-11:30". A section can have multiple slots (one per day it meets). */
+/**
+ * Room value meaning a meeting has no physical room. Recorded as an ordinary room
+ * value rather than a separate flag because that's how the registrar represents it,
+ * and because a section is "hybrid" only in the sense that its slots differ — there's
+ * no hybrid state to store on the section itself.
+ */
+export const ONLINE_ROOM = "Online";
+
+/**
+ * One meeting block for a section, e.g. "this section meets Monday 10:00-11:30 in G208".
+ * A section can have multiple slots (one per day it meets).
+ *
+ * Room lives here rather than on the section because the same section can meet on
+ * campus one day and online the next.
+ */
 export interface ScheduleSlot {
   day: DayOfWeek;
   /** 24-hour "HH:mm" format, e.g. "10:00" */
   startTime: string;
   /** 24-hour "HH:mm" format, e.g. "11:30" */
   endTime: string;
+  /** Room code, or ONLINE_ROOM when the meeting has no physical room. */
+  room: string;
 }
 
 /**
@@ -43,7 +59,6 @@ export interface Section {
   /** Section code as used by the registrar, e.g. "S15" for majors, "Z11" for GE, "Y11" for PE. */
   section: string;
   instructor: string;
-  room: string;
   /** All meeting times for this section — typically 2 entries for a twice-a-week course, 1 for a once-a-week course like PE. */
   schedule: ScheduleSlot[];
 }
