@@ -112,7 +112,7 @@ npm test
 
 ```
 
-41 tests covering time handling, filtering, section modality, timetable construction, conflict detection, and validation of persisted schedules.
+42 tests covering time handling, filtering, section modality, timetable construction, conflict detection, and validation of persisted schedules.
 
 ## Technical rationale
 

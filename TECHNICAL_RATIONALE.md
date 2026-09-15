@@ -66,7 +66,7 @@ If the catalog became much larger, rendering would likely become the first issue
 
 ## Testing
 
-There are 41 tests covering the pure modules: time handling, filtering, section modality, timetable construction and lane assignment, conflict detection, and validation of persisted schedules. The architecture was designed with this in mind. Keeping the scheduling rules outside the components makes them possible to test without needing a DOM.
+There are 42 tests covering the pure modules: time handling, filtering, section modality, timetable construction and lane assignment, conflict detection, and validation of persisted schedules. The architecture was designed with this in mind. Keeping the scheduling rules outside the components makes them possible to test without needing a DOM.
 
 Persisted data receives particular attention because `localStorage` should be treated as untrusted input. TypeScript does not perform runtime validation, so simply casting the stored data would allow an outdated or malformed structure to pass through. This became relevant when the `category` field was added and previously saved schedules no longer contained it. `parseStoredSchedule` checks each stored entry and removes malformed ones individually, so one invalid course does not cause the student's entire saved schedule to be lost.
 
