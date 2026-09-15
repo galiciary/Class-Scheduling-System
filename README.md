@@ -1,10 +1,10 @@
-**# Class Scheduling System**
+# Class Scheduling System
 
 A class scheduling web application for browsing course offerings, selecting sections, and building a weekly timetable.
 
 The catalog is modeled on DLSU's real course codes, the 1.5-hour period structure used by most subjects, Mon/Thu, Tue/Fri, and Wed/Sat day pairings, and in-person, hybrid, and fully online sections.
 
-**## Features**
+## Features
 
 - Browse the course catalog and expand a course to view its sections
 
@@ -24,15 +24,15 @@ The catalog is modeled on DLSU's real course codes, the 1.5-hour period structur
 
 - Separate desktop and mobile layouts, along with loading, empty, and error states
 
-**## Getting started**
+## Getting started
 
-**### Prerequisites**
+### Prerequisites
 
-- ****Node.js 22.12 or newer.**** Next.js itself runs on 20.9+, but the test runner (Vitest 5) requires 22.12+, so 22.12 is the minimum version for the repository as a whole.
+- **Node.js 22.12 or newer.** Next.js itself runs on 20.9+, but the test runner (Vitest 5) requires 22.12+, so 22.12 is the minimum version for the repository as a whole.
 
 - npm (included with Node)
 
-**### Installation**
+### Installation
 
 ```bash
 
@@ -46,7 +46,7 @@ npm install
 
 `npm install` should work without any additional flags. If it reports a peer dependency conflict, that indicates an issue with the committed `package.json` rather than something that should be worked around with `--legacy-peer-deps`.
 
-**### Running**
+### Running
 
 ```bash
 
@@ -56,7 +56,7 @@ npm run dev
 
 Then open http://localhost:3000.
 
-**### Other scripts**
+### Other scripts
 
 ```bash
 
@@ -74,7 +74,7 @@ npx tsc --noEmit   # type check
 
 ```
 
-**## Project structure**
+## Project structure
 
 src/
 
@@ -100,11 +100,11 @@ data/ Mock course data and its documentation
 
 The main separation is in `lib/`. Everything there is pure and has no React dependency, which makes the scheduling rules easier to test directly and keeps the components focused on displaying the data.
 
-**## Mock data**
+## Mock data
 
 `src/data/mockCourses.json`` holds 19 courses. The conventions it follows, including the period grid, day pairings, section code prefixes, and how rooms and online meetings are represented, are documented in [`src/data/README.md`](src/data/README.md).
 
-**## Tests**
+## Tests
 
 ```bash
 
@@ -114,6 +114,6 @@ npm test
 
 41 tests covering time handling, filtering, section modality, timetable construction, conflict detection, and validation of persisted schedules.
 
-**## Technical rationale**
+## Technical rationale
 
 See [TECHNICAL_RATIONALE.md](TECHNICAL_RATIONALE.md) for the reasoning behind the stack, data model, state management, and timetable rendering, including the trade-offs made and the limitations that could be addressed in future improvements.

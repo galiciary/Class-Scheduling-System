@@ -1,410 +1,83 @@
-**# Macky Merch API**
+# Technical Rationale
 
-A RESTful inventory API for ****Macky Merch****, the official merchandise of the La Salle Computer Society. Built for the 41st LSCS Backend Development Challenge under the Systems and Infrastructure Committee.
+## Stack
 
-The API supports full CRUD operations for a merchandise catalog, along with schema-based request validation, centralized error handling, pagination, and an automated test suite.
+**Next.js (App Router) with TypeScript and Tailwind CSS.** The brief allows React or Next.js, so I chose Next.js for its built-in project structure and because it makes moving to a real API fairly straightforward. A route handler can be added later without having to restructure the application.
 
----
+TypeScript is also useful here because the data model has several similar string fields, such as course codes, section codes, rooms, and times. Using types helped catch mistakes during the two data model refactors described below.
 
-**## Tech Stack**
+**No state management library, no UI kit.** The brief warns against adding complexity without a good reason. The app only has one piece of shared mutable state: the student's selected sections, which React can handle on its own. The UI is also fairly simple, consisting mainly of a list, a disclosure, and a grid. Using a component library would have added another dependency and a theming layer without providing much benefit.
 
-****Node.js 22+**** for the runtime, as required by the specification.
+**Vitest** is used for testing because the logic that needs testing is written in plain TypeScript. Vitest can run it without much configuration beyond resolving the `@/` alias.
 
-****Express 5**** as the web framework, also required by the specification.
+## Data model
 
-****TypeScript**** for compile-time type checking across the application. This helps catch mistakes before the code is run.
+The data follows the `Course → Section[] → ScheduleSlot[]` structure suggested in the brief. Two decisions within this structure are worth explaining because both fixed problems in an earlier version.
 
-****SQLite via `better-sqlite3`**** for the database. It provides a real SQL database without requiring any external database server or setup.
+**Course category is declared, not inferred.** The first version tried to determine a course's category from its code prefix, where something like `CS*` would mean one category and `GE*` another. This does not work well with actual course data. A prefix tells you which department offers the course, not what role it plays in a student's curriculum. `CC`, `CS`, and `NS` courses can all be degree requirements even though they have different prefixes. A course like `PSYFILI` can also be a major for a psychology student but a GE for this one. No amount of prefix parsing can reliably represent that difference. Because of this, `category` is stored directly on the course, and `colors.ts` uses that category to determine its color.
 
-****Zod**** for request validation. The same schemas are also used to generate the corresponding TypeScript types.
+**Room belongs to the meeting, not the section.** DLSU sections can be hybrid, meaning they can meet on campus one day and online the next. A single `room` field on the section cannot represent that. Moving the room information into each `ScheduleSlot` makes this possible. It also means "hybrid" does not need to be stored separately. It can simply be derived from sections whose meeting slots have different setups in `sectionModality.ts`. This keeps the label consistent with the actual schedule.
 
-****Vitest + Supertest**** for testing. They work well with TypeScript and do not require much additional configuration.
+**Color is deliberately absent from the data.** A real registrar API would provide information about a course's classification, but it would not provide a CSS class. Keeping colors out of `mockCourses.json` makes the mock data more representative of what a backend would actually return.
 
-**## Getting Started**
+## State management
 
-**### Prerequisites**
+Selected sections are stored in a module-level store (`lib/scheduleStore.ts`) and accessed through `useSyncExternalStore`. Three issues led me to this approach, and this solution addresses all three.
 
-- Node.js 22 or later
+The schedule is needed by the course list, timetable, and units summary. Using plain `useState` inside a hook would give each caller its own separate copy, which would require a Context provider to keep them synchronized. With a module-level store, any component using `useSchedule()` gets the same data without needing a provider.
 
-- npm 10 or later
+Restoring the saved schedule with `setState` inside an effect would cause an extra render every time the component mounts. React's linting also flags this pattern for good reason. `useSyncExternalStore` lets the components read directly from the store without that extra update.
 
-**### 1. Install**
+A lazy `useState` initializer that reads from `localStorage` would avoid the effect, but it introduces a hydration problem. The server would render an empty schedule while the client's first render would contain the saved schedule, causing a mismatch. `getServerSnapshot` returns an empty schedule for both the server render and the hydration render, and the saved data is loaded after mounting. This avoids the mismatch.
 
-```bash
+Another benefit is that the store's mutation functions are defined at the module level, so their references remain stable. This helps `memo` on the course cards work as intended.
 
-git clone https://github.com/galiciary/Macky-Merch-API.git
+## Rendering the timetable
 
-cd Macky-Merch-API
+The first version used an HTML `<table>` with one row for each class period. It was simple and semantic, and it gave screen readers proper day and time headers through `scope`. However, every row had the same height. This meant a 2-unit PE class looked the same as a 1.5-hour lecture, and a two-hour gap between classes looked the same as a fifteen-minute gap. For an app whose main purpose is helping students judge whether a schedule works, showing the wrong durations is a correctness issue rather than just a visual one.
 
-npm install
+The current grid instead uses a continuous 30-minute axis and positions each class block according to its actual start time and duration. A table is not well suited to this. Proportional heights would require `rowSpan` calculations, and a table cell cannot easily place overlapping classes side by side. The app needs to support overlapping selections because conflicts are intentionally allowed.
 
-```
+There is a trade-off here. The semantic table is no longer used. Each day column is given an accessible name, and every class block has an `aria-label` containing the course, section, day, time, and room. This follows the general approach used by calendar-style interfaces, although it is not as strong as using `scope="col"` table headers. I accepted this trade-off because the alternative would be a timetable that gives sighted users misleading information about class duration and spacing.
 
-> ****Note:**** `better-sqlite3` needs to compile native bindings during installation. If npm reports that install scripts were blocked, approve the package and rebuild it:
+Overlapping classes are assigned lanes by scanning each day. Meetings are first grouped into clusters of classes that overlap, including overlaps that are connected through another class. Within each cluster, every class gets the lowest available lane. All classes in the same cluster use the same lane count, allowing them to divide the column evenly.
 
->
+The grid itself has fixed vertical bounds covering the full day instead of adjusting based on the selected classes. This means the timetable has its full height on the first render and does not reflow as classes are added. The class blocks are positioned over the grid rather than stacked inside it.
 
-> ```bash
+## Conflict detection
 
-> npm install-scripts approve better-sqlite3
+The brief does not require this because the mock data is guaranteed to be conflict-free. I implemented it anyway because students can still select two sections that overlap, and conflict detection is also listed under Functionality in the evaluation criteria.
 
-> npm rebuild better-sqlite3
+It **warns rather than blocks**. Showing the conflict directly on the timetable makes it clear which section needs to be changed. Blocking the selection would make it less obvious why the sections cannot be selected together. Conflicts are grouped by section pair rather than by individual day, so if two Tue/Fri courses overlap on both days, they are reported as one conflict instead of two separate conflicts. Classes that end exactly when another begins are not considered overlapping because the comparison uses half-open time ranges.
 
-> ```
+## Filtering
 
-**### 2. Configure the environment**
+Filters are applied to **sections** rather than entire courses. A course remains visible if at least one of its sections matches the selected filters, and only the matching sections are kept. Filtering entire courses would create a confusing situation where a course appears to match something like "meets on Monday," but expanding it shows sections that do not actually meet on Monday.
 
-```bash
+When all sections of a course pass the filters, `filterCourses` returns the original course object instead of creating a copy. This preserves referential equality and helps keep `memo` on the course cards effective.
 
-cp .env.example .env
+## Performance
 
-```
+The dataset is small, so most of these decisions are about keeping the architecture sensible rather than solving performance problems that do not currently exist.
 
-| Variable | Default | Description |
+Filtering is a pure function wrapped in `useMemo`, using the catalog and filters as its dependencies. This means adding or removing a section does not cause the catalog to be filtered again. Course cards are also memoized and receive the selected section as a **primitive string** instead of a lookup callback. A callback would get a new identity whenever the selection changes, which would defeat the purpose of memoization. Together with the store's stable handlers, changing one course's selection only needs to re-render that course card.
 
-|---|---|---|
+If the catalog became much larger, rendering would likely become the first issue. A few thousand sections would benefit from list virtualization. Search would also be better served by debouncing or a prebuilt search index instead of checking every course and section on every keystroke. Neither is necessary for 19 courses, so adding them now would make the project more complicated without solving an actual problem.
 
-| `PORT` | `3000` | Port the HTTP server runs on |
+## Testing
 
-| `DB\_PATH` | `./data/macky\_merch.db` | Location of the SQLite database file |
+There are 41 tests covering the pure modules: time handling, filtering, section modality, timetable construction and lane assignment, conflict detection, and validation of persisted schedules. The architecture was designed with this in mind. Keeping the scheduling rules outside the components makes them possible to test without needing a DOM.
 
-**### 3. Database setup**
+Persisted data receives particular attention because `localStorage` should be treated as untrusted input. TypeScript does not perform runtime validation, so simply casting the stored data would allow an outdated or malformed structure to pass through. This became relevant when the `category` field was added and previously saved schedules no longer contained it. `parseStoredSchedule` checks each stored entry and removes malformed ones individually, so one invalid course does not cause the student's entire saved schedule to be lost.
 
-No manual database setup is required. When the application starts, it creates the `data/` directory if it does not exist and runs `schema.sql`. The schema is idempotent because it uses `CREATE TABLE IF NOT EXISTS`, so running the application again will not recreate an existing table.
+**Not covered:** component rendering and interaction. Testing these would require Testing Library and a jsdom environment. For this project's scope, I considered the pure scheduling logic the more important area to test, but component-level testing is still a gap.
 
-The database file is created automatically on the first run.
+## Known limitations
 
-To load the sample merchandise:
+- The error state in `useCourses` cannot currently be triggered because importing the bundled JSON does not throw an error. The hook is structured around an asynchronous request so that replacing the mock data with a real endpoint later can be done with minimal changes, and all consumers already handle the loading, success, and error states. However, the error path has not been tested against an actual failed request.
 
-```bash
+- No component-level tests, as mentioned above.
 
-npm run seed
+- The mobile layout places the course list above the schedule, so users have to scroll past the catalog to reach the timetable. This is acceptable for the current mobile layout, while the desktop layout places them side by side.
 
-```
-
-**### 4. Run**
-
-```bash
-
-npm run dev      # development, with hot reload
-
-```
-
-```bash
-
-npm run build    # compile TypeScript to dist/
-
-npm start        # run the compiled output
-
-```
-
-**### 5. Test**
-
-```bash
-
-npm test         # run the suite once
-
-npm run test:watch
-
-```
-
-**### 6. Run with Docker (optional)**
-
-```bash
-
-docker build -t macky-merch-api .
-
-docker run --rm -p 3000:3000 macky-merch-api
-
-```
-
----
-
-**## API Reference**
-
-Base URL: `http\://localhost:3000`
-
-**### Endpoints**
-
-| Method | Endpoint | Description | Success | Errors |
-
-|---|---|---|---|---|
-
-| `GET` | `/health` | Check if the API is running | `200` | — |
-
-| `POST` | `/api/products` | Create a product | `201` | `400`, `500` |
-
-| `GET` | `/api/products` | List all products | `200` | `400`, `500` |
-
-| `GET` | `/api/products/\:id` | Get one product | `200` | `400`, `404`, `500` |
-
-| `PUT` | `/api/products/\:id` | Update a product | `200` | `400`, `404`, `500` |
-
-| `DELETE` | `/api/products/\:id` | Delete a product | `200` | `400`, `404`, `500` |
-
-**### Product model**
-
-| Field | Type | Constraints | Notes |
-
-|---|---|---|---|
-
-| `id` | integer | primary key, auto-increment | Assigned by the database |
-
-| `name` | string | required, non-empty | |
-
-| `price` | number | required, positive | |
-
-| `stock` | integer | required, non-negative | |
-
-| `category` | string | required, non-empty | e.g. `"Clothing"` |
-
-| `size` | string or null | optional | ****Custom****: apparel sizing |
-
-| `isAvailable` | boolean | defaults to `true` | ****Custom****: hide items without deleting them |
-
-| `imageUrl` | string or null | optional, valid URL | ****Custom****: product photo for storefronts |
-
-| `createdAt` | string | set by the database | ****Custom****: keeps track of when a product was added |
-
-Four custom attributes were added beyond the five required fields. `isAvailable` is useful because merchandise may be temporarily unavailable without actually being removed from the inventory. A hard delete would not be able to represent that situation.
-
-**### Examples**
-
-Create:
-
-```bash
-
-curl -X POST localhost:3000/api/products \
-
--H 'Content-Type: application/json' \
-
--d '{"name":"LSCS Hoodie","price":899.5,"stock":25,"category":"Clothing","size":"M"}'
-
-```
-
-```json
-
-{
-
-"id": 1,
-
-"name": "LSCS Hoodie",
-
-"price": 899.5,
-
-"stock": 25,
-
-"category": "Clothing",
-
-"size": "M",
-
-"isAvailable": true,
-
-"imageUrl": null,
-
-"createdAt": "2026-09-14 04:10:27"
-
-}
-
-```
-
-Partial update: `PUT` accepts any subset of fields:
-
-```bash
-
-curl -X PUT localhost:3000/api/products/1 \
-
--H 'Content-Type: application/json' \
-
--d '{"stock":5}'
-
-```
-
-**### Pagination**
-
-```bash
-
-curl -i 'localhost:3000/api/products?page=1&limit=5'
-
-```
-
-The response body is ****always a top-level array****, as required by the specification. Pagination information is returned through headers instead of wrapping the response body. This keeps the response format the same whether pagination is being used or not:
-
-| Header | Meaning |
-
-|---|---|
-
-| `X-Total-Count` | Total number of products in the database |
-
-| `X-Page` | Current page |
-
-| `X-Limit` | Number of items per page |
-
-| `X-Total-Pages` | Total number of available pages |
-
-Pagination only activates when `page` or `limit` is provided. Without either parameter, the endpoint returns every product. This prevents a default page size from silently leaving out results.
-
-**### Error format**
-
-All errors use the same response structure regardless of which layer they come from:
-
-```json
-
-{
-
-"error": {
-
-```
-"message": "Validation failed",
-
-"details": [
-
-  { "field": "price", "message": "price must be a positive number" }
-
-]
-```
-
-}
-
-}
-
-```
-
-`details` is only included for validation errors. When validation fails, it lists ****all**** detected problems instead of stopping after the first one.
-
----
-
-**## Project Structure**
-
-src/
-
-|
-├── config/db.ts SQLite connection, pragmas, and schema bootstrap
-
-├── types/product.types.ts Row type, API type, and the mapper between them
-
-├── validation/product.schema.ts Zod schemas and their inferred types
-
-├── models/product.model.ts Prepared SQL statements and database access
-
-├── controllers/product.controller.ts HTTP handling only
-
-├── routes/product.routes.ts Route declarations and their guards
-
-├── middleware/
-
-| ├── validate.middleware.ts Reusable Zod validator
-
-| └── error.middleware.ts 404 handler and centralized error handler
-
-├── utils/ApiError.ts Error class carrying an HTTP status code
-
-├── scripts/seed.ts Sample data loader
-
-├── app.ts Express app composition
-
-└── server.ts Port binding
-
----
-
-**## Architectural Decisions**
-
-**### Why this folder structure**
-
-The project is split into layers, with each layer handling one main responsibility. Dependencies only move downward: ****routes → controllers → models → database****.
-
-Routes define what the API exposes and which guards are applied. Controllers handle HTTP-related work and do not contain SQL. Models handle all database queries and do not know anything about HTTP. They do not use `req`, `res`, or status codes.
-
-Keeping that boundary makes the model layer easier to test on its own. It also means the database layer could be replaced later without having to change the controllers.
-
-Validation and types have their own directories because they are shared across multiple layers instead of belonging to just one part of the application.
-
-**### Why SQLite**
-
-SQLite is a real SQL database with support for constraints, transactions, and query planning. The `CHECK` constraints on `price` and `stock` are enforced by the database itself, so invalid values cannot rely solely on application-level checks.
-
-Compared with PostgreSQL or MongoDB, SQLite does not require a separate running server, credentials, or connection string. This means a fresh clone can run with `npm install && npm test` without setting up another service.
-
-For an inventory API of this size, using a client/server database would add setup and maintenance overhead without providing much additional value. `better-sqlite3` was chosen for its straightforward synchronous API. Raw parameterized SQL was also preferred over an ORM so that the database queries remain easy to see and review.
-
-**### Why Zod defines the types**
-
-Request schemas are defined once in Zod, and the corresponding TypeScript types are generated using `z.infer`. This keeps the validation rules and TypeScript types connected. When a schema changes, the resulting type changes with it, and code that no longer matches will fail to compile.
-
-The schemas use `z.strictObject`, which rejects unknown fields instead of silently ignoring them. For example, if a client sends `stocks` instead of `stock`, the API returns a `400` explaining the issue instead of returning a `201` while quietly ignoring the incorrect field.
-
-**### Why `app.ts` and `server.ts` are separate**
-
-`app.ts` creates and exports the Express application but does not call `listen`. `server.ts` is the only module responsible for starting the server and binding the port.
-
-This lets Supertest import the app and send requests to it directly during testing. There is no need for a real port, there are no startup race conditions, and the test suite does not have to clean up a running server afterward.
-
----
-
-**## Challenges Faced**
-
-****Express 5 made `req.query` a read-only getter.****
-
-The validation middleware originally parsed a request segment with Zod and assigned the validated result back to it. The goal was to make sure downstream handlers received the validated and converted values instead of the original strings:
-
-```ts
-
-req.query = result.data;  // works in Express 4
-
-```
-
-This worked in Express 4, but the `GET /api/products` route started failing under Express 5 with a `TypeError` when trying to assign to a property that only has a getter.
-
-The confusing part was that the same middleware worked correctly when validating `req.body`. At first, the problem looked like it might be related to Zod rather than Express.
-
-The actual cause was a change in Express 5. `req.query` is now exposed as a lazily evaluated getter with no setter, so assigning a new value to it is no longer supported.
-
-The fix was to stop modifying the request object. Instead, the middleware now stores the validated result in `res.locals`, which is intended for passing per-request data between middleware:
-
-```ts
-
-res.locals[source] = result.data;
-
-```
-
-Controllers then read the validated values from `res.locals` instead of the original request.
-
-This ended up being better than the original approach rather than just being a workaround. The request object remains unchanged, and the difference between ****raw input**** and ****validated input**** is clear at each call site. When a controller reads `res.locals.query`, it is explicitly working with data that has already passed validation.
-
----
-
-**## Testing**
-
-19 tests across six suites, run with `npm test`.
-
-The tests cover all five CRUD endpoints, the full validation surface including missing fields, negative prices, unknown fields, empty update bodies, and non-numeric IDs. They also cover `404` responses for ID-based routes, pagination and its header metadata, unknown routes, and malformed JSON.
-
-Two details are worth noting. Tests use an ****in-memory**** SQLite database configured in `vitest.config.mts`. The products table is cleared before each test, which keeps tests isolated. Using the development database instead could accidentally destroy real data.
-
-Because every test starts with an empty table, the tests also do not depend on a particular execution order.
-
----
-
-**## Submission Checklist**
-
-- [x] All 5 CRUD endpoints functional
-
-- [x] 4 custom product attributes (`size`, `isAvailable`, `imageUrl`, `createdAt`)
-
-- [x] 19 automated tests passing
-
-- [x] README with setup, architecture, and challenges
-
-- [x] Working `start`, `dev`, and `test` scripts
-
-- [x] `node\_modules/` and `.env` excluded via `.gitignore`
-
-- [x] `schema.sql` included
-
-- [x] ****Bonus:**** TypeScript
-
-- [x] ****Bonus:**** Pagination
-
-- [x] ****Bonus:**** Dockerfile (verified building and running)
-
-- [ ] ****Bonus:**** Git workflow -> partially met. Feature branches and pull requests were used for the final three changes (PRs #1–#3); the initial scaffold and feature commits were pushed directly to `main`.
+- No schedule generation or real API integration. Both are optional items in the brief, so I prioritized getting the required functionality working correctly instead of adding features that were not necessary for the assessment.
