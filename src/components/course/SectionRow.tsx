@@ -1,8 +1,9 @@
 "use client";
 
 import type { CourseColor } from "@/lib/colors";
+import { getSectionModality, SECTION_MODALITY_LABELS } from "@/lib/sectionModality";
 import { formatSlot } from "@/lib/time";
-import { ONLINE_ROOM, type Section } from "@/types/course";
+import type { Section } from "@/types/course";
 
 interface SectionRowProps {
   section: Section;
@@ -21,8 +22,7 @@ interface SectionRowProps {
  * on campus one day and online the next.
  */
 export function SectionRow({ section, color, isSelected, onToggle }: SectionRowProps) {
-  const isFullyOnline = section.schedule.every((slot) => slot.room === ONLINE_ROOM);
-  const isHybrid = !isFullyOnline && section.schedule.some((slot) => slot.room === ONLINE_ROOM);
+  const modality = getSectionModality(section);
 
   return (
     <li
@@ -35,9 +35,9 @@ export function SectionRow({ section, color, isSelected, onToggle }: SectionRowP
           <span className={`text-sm font-semibold ${isSelected ? color.text : "text-slate-900"}`}>
             {section.section}
           </span>
-          {isFullyOnline || isHybrid ? (
+            {modality !== "in_person" ? (
             <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-slate-600 uppercase">
-              {isFullyOnline ? "Online" : "Hybrid"}
+              {SECTION_MODALITY_LABELS[modality]}
             </span>
           ) : null}
         </div>

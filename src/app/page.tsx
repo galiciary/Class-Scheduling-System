@@ -2,20 +2,23 @@
 
 import { useMemo, useState } from "react";
 import { CourseList } from "@/components/course/CourseList";
+import { FilterPanel } from "@/components/filters/FilterPanel";
 import { SearchBar } from "@/components/filters/SearchBar";
 import { ScheduleView } from "@/components/schedule/ScheduleView";
 import { useCourses } from "@/hooks/useCourses";
 import { useSchedule } from "@/hooks/useSchedule";
-import { filterCourses } from "@/lib/filterCourses";
+import { countActiveFilters, EMPTY_FILTERS, filterCourses } from "@/lib/filterCourses";
 
 export default function HomePage() {
   const { courses, isLoading, error } = useCourses();
   const { selectedSections, totalUnits, clearSchedule } = useSchedule();
-  const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
 
-  // Only re-filters when the catalog or the query changes — not when a section is
+  // Only re-filters when the catalog or the filters change — not when a section is
   // added or removed, which re-renders this page but leaves the course list identical.
-  const filteredCourses = useMemo(() => filterCourses(courses, query), [courses, query]);
+  const filteredCourses = useMemo(() => filterCourses(courses, filters), [courses, filters]);
+
+  const isFiltered = filters.query.trim().length > 0 || countActiveFilters(filters) > 0;
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
@@ -24,7 +27,7 @@ export default function HomePage() {
           Class Scheduler
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Browse courses, choose your sections, and build your dream schedule.
+          Browse courses, choose your sections, and build your schedule for the term.
         </p>
       </header>
 
@@ -51,13 +54,18 @@ export default function HomePage() {
           <h2 className="mb-3 text-sm font-semibold tracking-wide text-slate-500 uppercase">
             Courses
           </h2>
-          <SearchBar value={query} onChange={setQuery} resultCount={filteredCourses.length} />
+          <SearchBar
+            value={filters.query}
+            onChange={(query) => setFilters({ ...filters, query })}
+            resultCount={filteredCourses.length}
+          />
+          <FilterPanel filters={filters} onChange={setFilters} />
           <div className="mt-4">
             <CourseList
               courses={filteredCourses}
               isLoading={isLoading}
               error={error}
-              hasQuery={query.trim().length > 0}
+              hasQuery={isFiltered}
             />
           </div>
         </section>
